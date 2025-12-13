@@ -38,10 +38,7 @@ python-dotenv>=1.0.0
 pydantic>=2.0.0
 
 # Agents & LLM
-openai>=1.0.0
-langchain>=0.1.0
-langchain-openai>=0.0.5
-chromadb>=0.4.0
+openai>=1.12.0
 
 # Logging & monitoring
 loguru>=0.7.0
@@ -56,8 +53,6 @@ pytest-cov>=4.1.0
 black>=23.0.0
 ruff>=0.1.0
 
-# Gemini API and Vector Store
-google-generativeai>=0.8.0
+# Vector Store (FAISS for RAG)
 sentence-transformers>=5.0.0
 faiss-cpu>=1.13.0
-python-dotenv>=1.0.0

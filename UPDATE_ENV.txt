@@ -1,0 +1,30 @@
+========================================
+🔑 UPDATE YOUR .env FILE
+========================================
+
+Run this command to edit your .env file:
+  
+  nano .env
+
+Then update it to:
+
+----------------------------------------
+# OpenAI API Configuration
+OPENAI_API_KEY=sk-your-key-here
+OPENAI_MODEL=gpt-4o-mini
+
+# SEC Edgar User Agent (Required)
+SEC_USER_AGENT=MubinModi mubinmodi@gmail.com
+
+# Optional: Tesseract Path (for OCR)
+TESSERACT_CMD=/opt/homebrew/bin/tesseract
+----------------------------------------
+
+Get your API key at:
+https://platform.openai.com/api-keys
+
+Then save (Ctrl+O, Enter, Ctrl+X) and run:
+
+  python run_agents_v2.py --doc-id AAPL_10-K_0000320193-25-000079
+
+========================================

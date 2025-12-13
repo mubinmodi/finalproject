@@ -140,7 +140,7 @@ Finding:
                     "finding": finding_text,
                     "section": section_label,
                     "citation_ids": [citation_id],
-                    "page": chunk['metadata']['page']
+                    "page": chunk.get('page', 0)
                 })
         
         # Limit to top 10
@@ -326,7 +326,7 @@ Changes:
         )
         
         # Filter for Item 1A
-        risk_chunks = [c for c in chunks if c['metadata'].get('item', '').startswith('Item 1A')]
+        risk_chunks = [c for c in chunks if c.get('item', '').startswith('Item 1A')]
         
         if not risk_chunks:
             risk_chunks = chunks[:2]  # Fallback

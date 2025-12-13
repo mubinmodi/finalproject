@@ -39,13 +39,15 @@ class TableStage:
         pdf_path = config.paths.raw_dir / doc_id / "filing.pdf"
         html_path = config.paths.raw_dir / doc_id / "filing.html"
         
-        # Check if we have a PDF
+        # Check if we have a PDF or HTML
         if not pdf_path.exists():
             if html_path.exists():
-                logger.warning(f"Table extraction requires PDF, but only HTML found. Skipping table extraction.")
-                # Create empty tables index
-                self._save_tables_index(doc_id, [])
-                return []
+                logger.info(f"PDF not found, extracting tables from HTML instead")
+                # Extract tables from HTML
+                tables_metadata = self._extract_tables_from_html(html_path, doc_id)
+                self._save_tables_index(doc_id, tables_metadata)
+                logger.info(f"✅ Extracted {len(tables_metadata)} tables from HTML")
+                return tables_metadata
             else:
                 raise FileNotFoundError(f"Neither PDF nor HTML found for {doc_id}")
         
@@ -383,17 +385,118 @@ class TableStage:
         
         return csv_path
     
+    def _extract_tables_from_html(self, html_path: Path, doc_id: str) -> List[Dict]:
+        """
+        Extract tables from HTML file using pandas.
+        
+        Args:
+            html_path: Path to HTML file
+            doc_id: Document identifier
+        
+        Returns:
+            List of table metadata dictionaries
+        """
+        from bs4 import BeautifulSoup
+        
+        tables_metadata = []
+        
+        try:
+            # Read all tables from HTML
+            dfs = pd.read_html(str(html_path))
+            logger.info(f"Found {len(dfs)} tables in HTML")
+            
+            # Also get table context from HTML
+            with open(html_path, 'r', encoding='utf-8', errors='ignore') as f:
+                soup = BeautifulSoup(f, 'html.parser')
+            
+            html_tables = soup.find_all('table')
+            
+            for idx, df in enumerate(dfs):
+                # Skip tiny tables (likely not real data tables)
+                if df.shape[0] < 2 or df.shape[1] < 2:
+                    continue
+                
+                table_id = f"{doc_id}_table{idx}"
+                
+                # Save table as CSV
+                csv_path = self._save_table_csv(doc_id, table_id, df)
+                
+                # Create metadata (match format expected by Stage 5)
+                metadata = {
+                    'table_id': table_id,
+                    'doc_id': doc_id,
+                    'page': 0,  # HTML doesn't have page numbers
+                    'num_rows': int(df.shape[0]),
+                    'num_cols': int(df.shape[1]),
+                    'method': 'html_pandas',
+                    'csv_path': str(csv_path),
+                    'bbox': {
+                        'x1': 0.0,
+                        'y1': 0.0,
+                        'x2': 100.0,
+                        'y2': 100.0
+                    },
+                    'quality_score': 90.0,  # HTML tables are usually well-structured
+                    'accuracy': 90.0
+                }
+                
+                # Try to get table caption/context
+                if idx < len(html_tables):
+                    table_element = html_tables[idx]
+                    # Look for caption
+                    caption = table_element.find('caption')
+                    if caption:
+                        metadata['caption'] = caption.get_text(strip=True)
+                    
+                    # Get some context text before the table
+                    prev_text = ""
+                    for prev_sibling in table_element.find_previous_siblings():
+                        if prev_sibling.name in ['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6']:
+                            prev_text = prev_sibling.get_text(strip=True)
+                            break
+                    if prev_text:
+                        metadata['context'] = prev_text[:200]
+                
+                tables_metadata.append(metadata)
+            
+            logger.info(f"Extracted {len(tables_metadata)} quality tables from HTML")
+            return tables_metadata
+            
+        except Exception as e:
+            logger.warning(f"Could not extract tables from HTML: {e}")
+            return []
+    
+    def _save_table_csv(self, doc_id: str, table_id: str, df: pd.DataFrame) -> Path:
+        """
+        Save DataFrame as CSV file.
+        
+        Args:
+            doc_id: Document identifier
+            table_id: Table identifier
+            df: DataFrame to save
+        
+        Returns:
+            Path to saved CSV file
+        """
+        output_dir = config.paths.processed_dir / doc_id / "tables"
+        output_dir.mkdir(parents=True, exist_ok=True)
+        
+        csv_path = output_dir / f"{table_id}.csv"
+        df.to_csv(csv_path, index=False)
+        
+        return csv_path
+    
     def _save_tables_index(self, doc_id: str, tables_metadata: List[Dict]):
         """Save tables index to JSONL file."""
         output_dir = config.paths.processed_dir / doc_id
         output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         output_path = output_dir / "tables_index.jsonl"
-        
+
         with open(output_path, 'w') as f:
             for metadata in tables_metadata:
                 f.write(json.dumps(metadata) + '\n')
-        
+
         logger.info(f"Saved tables index to {output_path}")
 
 

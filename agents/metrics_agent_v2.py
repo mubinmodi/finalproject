@@ -539,7 +539,7 @@ class MetricsAgentV2(BaseAgent):
                     found_metrics.append({
                         "metric": metric_name,
                         "context": text[:300],
-                        "page": chunks[0]['metadata']['page']
+                        "page": chunks[0].get('page', 0)
                     })
         
         return {

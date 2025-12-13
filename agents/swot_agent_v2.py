@@ -223,7 +223,7 @@ JSON:
                 # Add citation
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
-                item['page'] = chunk['metadata']['page']
+                item['page'] = chunk.get('page', 0)
                 
                 items.append(item)
             except:
@@ -308,7 +308,7 @@ JSON:
                 item = json.loads(response)
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
-                item['page'] = chunk['metadata']['page']
+                item['page'] = chunk.get('page', 0)
                 items.append(item)
             except:
                 logger.warning(f"Could not parse weakness response for {category}")
@@ -387,7 +387,7 @@ JSON:
                 item = json.loads(response)
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
-                item['page'] = chunk['metadata']['page']
+                item['page'] = chunk.get('page', 0)
                 items.append(item)
             except:
                 logger.warning(f"Could not parse opportunity response for {category}")
@@ -466,7 +466,7 @@ JSON:
                 item = json.loads(response)
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
-                item['page'] = chunk['metadata']['page']
+                item['page'] = chunk.get('page', 0)
                 items.append(item)
             except:
                 logger.warning(f"Could not parse threat response for {category}")

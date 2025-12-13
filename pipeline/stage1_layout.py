@@ -6,6 +6,7 @@ Uses LayoutParser with Detectron2 to detect document blocks
 """
 
 import json
+import os
 from pathlib import Path
 from typing import List, Dict, Optional
 import layoutparser as lp
@@ -14,6 +15,13 @@ import numpy as np
 from utils import config, get_logger, Block, BoundingBox
 
 logger = get_logger("stage1_layout")
+
+# Fix model cache directory to avoid permission issues
+cache_dir = config.paths.data_dir / ".model_cache"
+cache_dir.mkdir(parents=True, exist_ok=True)
+os.environ['TORCH_HOME'] = str(cache_dir)
+os.environ['DETECTRON2_DATASETS'] = str(cache_dir)
+logger.info(f"Model cache directory set to: {cache_dir}")
 
 
 class LayoutStage:

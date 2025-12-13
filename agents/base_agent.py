@@ -1,9 +1,9 @@
 """
-Base Agent Class with Gemini API and FAISS Vector Store
+Base Agent Class with OpenAI API and FAISS Vector Store
 
 Provides common functionality for all analysis agents including:
 - FAISS vector store for RAG (like rag_chat.py)
-- Gemini LLM interface
+- OpenAI LLM interface
 - Document loading and retrieval
 - Citation tracking
 """
@@ -11,6 +11,7 @@ Provides common functionality for all analysis agents including:
 import json
 import os
 import gc
+import time
 from pathlib import Path
 from typing import List, Dict, Optional, Any
 from abc import ABC, abstractmethod
@@ -19,7 +20,7 @@ import numpy as np
 # Core imports
 import faiss
 from sentence_transformers import SentenceTransformer
-import google.generativeai as genai
+from openai import OpenAI
 from utils import config, get_logger
 
 logger = get_logger("agents")
@@ -28,21 +29,22 @@ logger = get_logger("agents")
 from dotenv import load_dotenv
 load_dotenv()
 
-# Configure Gemini
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-pro")
+# Configure OpenAI
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
 
-if GEMINI_API_KEY:
-    genai.configure(api_key=GEMINI_API_KEY)
-    GEMINI_AVAILABLE = True
-    logger.info(f"✅ Gemini API configured with model: {GEMINI_MODEL}")
+if OPENAI_API_KEY:
+    openai_client = OpenAI(api_key=OPENAI_API_KEY)
+    LLM_AVAILABLE = True
+    logger.info(f"✅ OpenAI API configured with model: {OPENAI_MODEL}")
 else:
-    GEMINI_AVAILABLE = False
-    logger.warning("⚠️  Gemini API key not found in .env")
+    openai_client = None
+    LLM_AVAILABLE = False
+    logger.warning("⚠️  OpenAI API key not found in .env")
 
 
 class BaseAgent(ABC):
-    """Base class for all analysis agents with Gemini and FAISS."""
+    """Base class for all analysis agents with OpenAI and FAISS."""
     
     def __init__(
         self,
@@ -56,32 +58,20 @@ class BaseAgent(ABC):
         
         Args:
             agent_name: Name of the agent
-            model: LLM model name (defaults to GEMINI_MODEL)
+            model: LLM model name (defaults to OPENAI_MODEL)
             temperature: LLM temperature (defaults to config)
             embedding_model: Sentence transformer model for embeddings
         """
         self.agent_name = agent_name
-        self.model_name = model or GEMINI_MODEL
+        self.model_name = model or OPENAI_MODEL
         self.temperature = temperature if temperature is not None else config.agent.temperature
         
         logger.info(f"Initializing {agent_name}")
         
-        # Initialize Gemini
-        if GEMINI_AVAILABLE:
-            try:
-                self.llm = genai.GenerativeModel(
-                    model_name=self.model_name,
-                    generation_config={
-                        "temperature": self.temperature,
-                        "top_p": 0.95,
-                        "top_k": 40,
-                        "max_output_tokens": config.agent.max_tokens,
-                    }
-                )
-                logger.info(f"✅ {agent_name} initialized with {self.model_name}")
-            except Exception as e:
-                logger.error(f"Failed to initialize Gemini: {e}")
-                self.llm = None
+        # Initialize OpenAI client
+        if LLM_AVAILABLE:
+            self.llm = openai_client
+            logger.info(f"✅ {agent_name} initialized with {self.model_name}")
         else:
             self.llm = None
             logger.warning(f"⚠️  {agent_name} initialized in fallback mode")
@@ -258,7 +248,7 @@ class BaseAgent(ABC):
         max_retries: int = 3
     ) -> str:
         """
-        Query Gemini LLM with prompt and optional context.
+        Query OpenAI LLM with prompt and optional context.
         
         Args:
             prompt: User prompt
@@ -268,7 +258,7 @@ class BaseAgent(ABC):
         Returns:
             LLM response text
         """
-        if not GEMINI_AVAILABLE or not self.llm:
+        if not LLM_AVAILABLE or not self.llm:
             return f"""[Agent: {self.agent_name}]
 
 LLM not available. This is a placeholder response.
@@ -279,23 +269,39 @@ Your query:
 {f'Context: {context[:500]}...' if context else ''}
 
 To enable full functionality, please:
-1. Install required packages: pip install google-generativeai sentence-transformers faiss-cpu
-2. Set GEMINI_API_KEY in .env file"""
+1. Install required packages: pip install openai sentence-transformers faiss-cpu
+2. Set OPENAI_API_KEY in .env file"""
         
-        # Construct full prompt
-        full_prompt = f"{context}\n\n{prompt}" if context else prompt
+        # Construct messages for chat completion
+        messages = []
+        if context:
+            messages.append({"role": "system", "content": f"Context:\n{context}"})
+        messages.append({"role": "user", "content": prompt})
         
-        # Query Gemini with retries
+        # Query OpenAI with retries
         for attempt in range(max_retries):
             try:
-                response = self.llm.generate_content(full_prompt)
-                return response.text
+                response = self.llm.chat.completions.create(
+                    model=self.model_name,
+                    messages=messages,
+                    temperature=self.temperature,
+                    max_tokens=config.agent.max_tokens
+                )
+                return response.choices[0].message.content
             except Exception as e:
-                logger.warning(f"Gemini query failed (attempt {attempt + 1}/{max_retries}): {e}")
+                error_str = str(e)
+                logger.warning(f"OpenAI query failed (attempt {attempt + 1}/{max_retries}): {e}")
+                
+                # If rate limit exceeded, wait and retry
+                if "429" in error_str or "rate" in error_str.lower():
+                    wait_time = 5 * (attempt + 1)  # Exponential backoff
+                    logger.info(f"Rate limit hit, waiting {wait_time} seconds...")
+                    time.sleep(wait_time)
+                
                 if attempt == max_retries - 1:
                     raise
         
-        return "Error: Failed to get response from Gemini"
+        return "Error: Failed to get response from OpenAI"
     
     def generate_response(
         self,
@@ -303,7 +309,7 @@ To enable full functionality, please:
         context: Optional[str] = None
     ) -> str:
         """
-        Generate response using Gemini LLM (alias for query_llm for backward compatibility).
+        Generate response using OpenAI LLM (alias for query_llm for backward compatibility).
         
         Args:
             prompt: User prompt
@@ -333,6 +339,10 @@ To enable full functionality, please:
         """
         output_dir = config.paths.final_dir / doc_id
         output_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Add .json extension if not present
+        if not filename.endswith('.json'):
+            filename = f"{filename}.json"
         
         output_path = output_dir / filename
         with open(output_path, 'w') as f:

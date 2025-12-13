@@ -37,7 +37,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS
+# Custom CSS - Fixed for dark mode compatibility
 st.markdown("""
 <style>
     .main-header {
@@ -50,19 +50,24 @@ st.markdown("""
     .sub-header {
         font-size: 1.5rem;
         font-weight: 600;
-        color: #2c3e50;
+        color: #1f77b4;
         margin-top: 2rem;
         margin-bottom: 1rem;
     }
     .metric-card {
         background-color: #f8f9fa;
+        color: #000000;
         padding: 1.5rem;
         border-radius: 10px;
         border-left: 5px solid #1f77b4;
         margin-bottom: 1rem;
     }
+    .metric-card h2, .metric-card h3, .metric-card h4, .metric-card p {
+        color: #000000 !important;
+    }
     .citation {
         background-color: #e3f2fd;
+        color: #000000;
         padding: 0.5rem;
         border-radius: 5px;
         margin: 0.5rem 0;
@@ -70,12 +75,14 @@ st.markdown("""
     }
     .red-flag {
         background-color: #ffebee;
+        color: #000000;
         padding: 0.5rem;
         border-left: 4px solid #f44336;
         margin: 0.5rem 0;
     }
     .green-flag {
         background-color: #e8f5e9;
+        color: #000000;
         padding: 0.5rem;
         border-left: 4px solid #4caf50;
         margin: 0.5rem 0;
@@ -135,9 +142,9 @@ def display_metric_card(title: str, value: str, delta: Optional[str] = None):
     """Display a metric card."""
     st.markdown(f"""
     <div class="metric-card">
-        <h3 style="margin: 0; color: #1f77b4;">{title}</h3>
-        <h2 style="margin: 0.5rem 0;">{value}</h2>
-        {f'<p style="margin: 0; color: #666;">{delta}</p>' if delta else ''}
+        <h3 style="margin: 0; color: #1f77b4 !important;">{title}</h3>
+        <h2 style="margin: 0.5rem 0; color: #000000 !important;">{value}</h2>
+        {f'<p style="margin: 0; color: #333333 !important;">{delta}</p>' if delta else ''}
     </div>
     """, unsafe_allow_html=True)
 
@@ -269,17 +276,17 @@ def display_overview(doc_id: str, doc_info: Dict):
     with col1:
         st.markdown(f"""
         <div class="metric-card">
-            <h4>Company</h4>
-            <h2>{doc_info['ticker']}</h2>
-            <p>Filing Type: {doc_info['form_type']}</p>
+            <h4 style="color: #000000 !important;">Company</h4>
+            <h2 style="color: #000000 !important;">{doc_info['ticker']}</h2>
+            <p style="color: #000000 !important;">Filing Type: {doc_info['form_type']}</p>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown(f"""
         <div class="metric-card">
-            <h4>Filing Date</h4>
-            <h2>{doc_info['filing_date']}</h2>
+            <h4 style="color: #000000 !important;">Filing Date</h4>
+            <h2 style="color: #000000 !important;">{doc_info['filing_date']}</h2>
         </div>
         """, unsafe_allow_html=True)
     
@@ -298,8 +305,8 @@ def display_overview(doc_id: str, doc_info: Dict):
             
             st.markdown(f"""
             <div class="metric-card" style="border-left-color: {color};">
-                <h4>Recommendation</h4>
-                <h2 style="color: {color};">{rating}</h2>
+                <h4 style="color: #000000 !important;">Recommendation</h4>
+                <h2 style="color: {color} !important;">{rating}</h2>
             </div>
             """, unsafe_allow_html=True)
     
@@ -383,7 +390,7 @@ def display_summary(doc_id: str, show_citations: bool, show_provenance: bool):
     st.markdown("### ⚠️ Key Risk Factors")
     for risk in brief['new_risks']['risks']:
         st.markdown(f"""
-        <div class="red-flag">
+        <div class="red-flag" style="color: #000000 !important;">
             {risk}
         </div>
         """, unsafe_allow_html=True)
@@ -565,9 +572,9 @@ def display_decision(doc_id: str):
     st.markdown(f"""
     <div style="background: linear-gradient(135deg, {color}22 0%, {color}11 100%); 
                 padding: 2rem; border-radius: 15px; border-left: 8px solid {color};">
-        <h1 style="color: {color}; margin: 0;">{rec['rating']}</h1>
-        <p style="font-size: 1.2rem; margin: 0.5rem 0;">Confidence: {rec['confidence']}</p>
-        <p style="font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0;">
+        <h1 style="color: {color} !important; margin: 0;">{rec['rating']}</h1>
+        <p style="font-size: 1.2rem; margin: 0.5rem 0; color: #000000 !important;">Confidence: {rec['confidence']}</p>
+        <p style="font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; color: #000000 !important;">
             Composite Score: {rec['composite_score']}/100
         </p>
     </div>
@@ -609,7 +616,7 @@ def display_decision(doc_id: str):
         st.markdown("### 📈 Bull Thesis")
         for point in memo['bull_thesis']:
             st.markdown(f"""
-            <div class="green-flag">
+            <div class="green-flag" style="color: #000000 !important;">
                 {point}
             </div>
             """, unsafe_allow_html=True)
@@ -618,7 +625,7 @@ def display_decision(doc_id: str):
         st.markdown("### 📉 Bear Thesis")
         for point in memo['bear_thesis']:
             st.markdown(f"""
-            <div class="red-flag">
+            <div class="red-flag" style="color: #000000 !important;">
                 {point}
             </div>
             """, unsafe_allow_html=True)
@@ -628,7 +635,7 @@ def display_decision(doc_id: str):
         st.markdown("### 🚩 Red Flags")
         for flag in memo['red_flags']:
             st.markdown(f"""
-            <div class="red-flag">
+            <div class="red-flag" style="color: #000000 !important;">
                 ⚠️ {flag}
             </div>
             """, unsafe_allow_html=True)

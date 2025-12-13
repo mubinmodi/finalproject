@@ -53,6 +53,8 @@ class XBRLStage:
         
         if not xbrl_dir.exists():
             logger.warning(f"No XBRL directory found for {doc_id}")
+            # Create empty XBRL facts file for validation
+            self._save_facts(doc_id, [])
             return []
         
         # Find instance document (typically ends with .xml and contains data)
@@ -60,6 +62,8 @@ class XBRLStage:
         
         if not instance_files:
             logger.warning(f"No XBRL instance documents found in {xbrl_dir}")
+            # Create empty XBRL facts file for validation
+            self._save_facts(doc_id, [])
             return []
         
         # Use the first instance document
