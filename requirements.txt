@@ -1,0 +1,53 @@
+# Core SEC filing download
+sec-edgar-downloader>=5.0.0
+
+# PDF processing
+pdfplumber>=0.10.0
+PyPDF2>=3.0.0
+
+# OCR (fallback)
+pytesseract>=0.3.10
+Pillow>=10.0.0
+
+# Table extraction
+camelot-py[cv]>=0.11.0
+opencv-python>=4.8.0
+
+# Layout detection
+layoutparser[ocr]>=0.3.4
+torch>=2.0.0
+torchvision>=0.15.0
+detectron2 @ git+https://github.com/facebookresearch/detectron2.git
+
+# XBRL parsing
+arelle-release>=2.20.0
+
+# Data management & pipeline
+dvc[s3]>=3.0.0
+
+# Utilities
+pandas>=2.0.0
+numpy>=1.24.0
+requests>=2.31.0
+tqdm>=4.65.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+
+# Agents & LLM (for multi-agent analysis)
+openai>=1.0.0
+langchain>=0.1.0
+langchain-openai>=0.0.5
+chromadb>=0.4.0
+
+# Logging & monitoring
+loguru>=0.7.0
+
+# Testing & quality
+pytest>=7.4.0
+pytest-cov>=4.1.0
+black>=23.0.0
+ruff>=0.1.0
+
+# UI & Visualization
+streamlit>=1.28.0
+plotly>=5.17.0

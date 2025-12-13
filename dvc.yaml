@@ -1,0 +1,132 @@
+# DVC Pipeline Configuration
+# Defines reproducible stages for SEC filings processing
+
+stages:
+  download:
+    cmd: python -m pipeline.stage0_download --ticker ${ticker} --form-type ${form_type} --limit ${limit}
+    params:
+      - ticker
+      - form_type
+      - limit
+    outs:
+      - data/raw/${ticker}_${form_type}_*/:
+          cache: false
+    desc: "Download SEC filings with XBRL attachments"
+
+  layout_detection:
+    cmd: python -m pipeline.stage1_layout --doc-id ${doc_id}
+    deps:
+      - data/raw/${doc_id}/
+      - pipeline/stage1_layout.py
+    outs:
+      - data/processed/${doc_id}/blocks.jsonl:
+          cache: true
+    desc: "Detect document layout and identify blocks"
+
+  text_extraction:
+    cmd: python -m pipeline.stage2_text --doc-id ${doc_id}
+    deps:
+      - data/raw/${doc_id}/
+      - data/processed/${doc_id}/blocks.jsonl
+      - pipeline/stage2_text.py
+    outs:
+      - data/processed/${doc_id}/tokens.jsonl:
+          cache: true
+      - data/processed/${doc_id}/text_blocks.jsonl:
+          cache: true
+    desc: "Extract text with word-level provenance"
+
+  table_extraction:
+    cmd: python -m pipeline.stage3_tables --doc-id ${doc_id}
+    deps:
+      - data/raw/${doc_id}/
+      - data/processed/${doc_id}/blocks.jsonl
+      - pipeline/stage3_tables.py
+    outs:
+      - data/processed/${doc_id}/tables/:
+          cache: true
+      - data/processed/${doc_id}/tables_index.jsonl:
+          cache: true
+    desc: "Extract financial tables as CSV"
+
+  xbrl_extraction:
+    cmd: python -m pipeline.stage4_xbrl --doc-id ${doc_id}
+    deps:
+      - data/raw/${doc_id}/xbrl/
+      - pipeline/stage4_xbrl.py
+    outs:
+      - data/processed/${doc_id}/xbrl_facts.jsonl:
+          cache: true
+    desc: "Parse XBRL facts for numeric validation"
+
+  chunking:
+    cmd: python -m pipeline.stage5_chunks --doc-id ${doc_id}
+    deps:
+      - data/processed/${doc_id}/text_blocks.jsonl
+      - data/processed/${doc_id}/tables_index.jsonl
+      - data/processed/${doc_id}/xbrl_facts.jsonl
+      - pipeline/stage5_chunks.py
+    outs:
+      - data/final/${doc_id}/filing.md:
+          cache: true
+      - data/final/${doc_id}/chunks.jsonl:
+          cache: true
+    desc: "Create RAG-ready document chunks"
+
+  analyze_summary:
+    cmd: python -m agents.summary_agent --doc-id ${doc_id}
+    deps:
+      - data/final/${doc_id}/chunks.jsonl
+      - agents/summary_agent.py
+    outs:
+      - data/final/${doc_id}/summary_analysis.json:
+          cache: false
+    desc: "Generate executive summary"
+
+  analyze_swot:
+    cmd: python -m agents.swot_agent --doc-id ${doc_id}
+    deps:
+      - data/final/${doc_id}/chunks.jsonl
+      - agents/swot_agent.py
+    outs:
+      - data/final/${doc_id}/swot_analysis.json:
+          cache: false
+    desc: "Perform SWOT analysis"
+
+  analyze_metrics:
+    cmd: python -m agents.metrics_agent --doc-id ${doc_id}
+    deps:
+      - data/processed/${doc_id}/xbrl_facts.jsonl
+      - data/processed/${doc_id}/tables_index.jsonl
+      - agents/metrics_agent.py
+    outs:
+      - data/final/${doc_id}/metrics_analysis.json:
+          cache: false
+    desc: "Extract and analyze financial metrics"
+
+  analyze_decision:
+    cmd: python -m agents.decision_agent --doc-id ${doc_id}
+    deps:
+      - data/final/${doc_id}/summary_analysis.json
+      - data/final/${doc_id}/swot_analysis.json
+      - data/final/${doc_id}/metrics_analysis.json
+      - agents/decision_agent.py
+    outs:
+      - data/final/${doc_id}/decision_analysis.json:
+          cache: false
+    desc: "Generate investment recommendation"
+
+# Parameter definitions
+params:
+  - ticker: AAPL
+  - form_type: 10-K
+  - limit: 1
+  - doc_id: AAPL_10-K_latest
+
+# Plots for visualization (optional)
+plots:
+  - data/final/${doc_id}/metrics_analysis.json:
+      template: simple
+      x: metric
+      y: value
+      title: "Key Financial Metrics"

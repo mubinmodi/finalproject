@@ -1,0 +1,30 @@
+# DVC Parameters
+# Default parameters for pipeline execution
+
+# Download parameters
+ticker: AAPL
+form_type: 10-K
+limit: 1
+
+# Processing parameters
+doc_id: AAPL_10-K_0001628280-23-026301
+
+# Agent parameters
+risk_tolerance: moderate
+investment_horizon: medium_term
+
+# Model parameters
+llm_model: gpt-4-turbo-preview
+llm_temperature: 0.1
+embedding_model: text-embedding-3-small
+
+# Chunking parameters
+chunk_size: 1000
+chunk_overlap: 200
+min_chunk_size: 100
+
+# OCR parameters
+ocr_confidence_threshold: 60.0
+
+# Table extraction parameters
+table_min_accuracy: 50.0
