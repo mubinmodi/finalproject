@@ -62,7 +62,7 @@ class SummaryAgent(BaseAgent):
         section_summaries = {}
         
         for section in key_sections:
-            section_chunks = [c for c in chunks if c.get('item', '').startswith(section)]
+            section_chunks = [c for c in chunks if (c.get('item') or '').startswith(section)]
             
             if section_chunks:
                 # Get most relevant chunks for this section

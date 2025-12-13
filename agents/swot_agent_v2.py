@@ -519,8 +519,8 @@ JSON:
             vector_store=vector_store
         )
         
-        # Filter for Item 1A
-        current_risks = [c for c in current_chunks if 'item 1a' in c['metadata'].get('item', '').lower()]
+        # Filter for Item 1A (handle None values)
+        current_risks = [c for c in current_chunks if 'item 1a' in (c.get('item') or '').lower()]
         
         # For full implementation, would load prior year and compare
         # For now, identify key risks

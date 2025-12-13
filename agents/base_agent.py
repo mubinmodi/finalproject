@@ -173,13 +173,16 @@ class BaseAgent(ABC):
         logger.info(f"FAISS index saved to {index_path}")
         
         with open(mapping_path, "w", encoding="utf-8") as f:
-            # Save only essential chunk data
+            # Save all essential chunk data including item field
             mapping_to_save = {
                 i: {
                     'text': chunk['text'],
                     'page': chunk.get('page', 0),
                     'section': chunk.get('section'),
-                    'chunk_id': chunk['chunk_id']
+                    'item': chunk.get('item'),  # ✅ FIXED: Include item field for filtering
+                    'chunk_id': chunk['chunk_id'],
+                    'doc_id': chunk.get('doc_id'),
+                    'extractor': chunk.get('extractor')
                 }
                 for i, chunk in self.chunk_mapping.items()
             }

@@ -325,8 +325,8 @@ Changes:
             vector_store=vector_store
         )
         
-        # Filter for Item 1A
-        risk_chunks = [c for c in chunks if c.get('item', '').startswith('Item 1A')]
+        # Filter for Item 1A (handle None values)
+        risk_chunks = [c for c in chunks if (c.get('item') or '').startswith('Item 1A')]
         
         if not risk_chunks:
             risk_chunks = chunks[:2]  # Fallback
