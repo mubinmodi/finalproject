@@ -9,6 +9,10 @@ Interactive interface for SEC filings analysis with:
 - Comparison views
 """
 
+# Suppress harmless warnings
+import warnings
+warnings.filterwarnings('ignore', category=UserWarning)
+
 import streamlit as st
 import json
 import pandas as pd
