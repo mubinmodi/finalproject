@@ -8,12 +8,30 @@ Includes YoY comparison of Risk Factors (Item 1A delta analysis).
 """
 
 import json
+import re
 from typing import Dict, Any, List, Optional
 from pathlib import Path
 from .base_agent import BaseAgent
 from utils import get_logger, ProvenanceTracker, create_citation_from_chunk, config
 
 logger = get_logger("swot_agent_v2")
+
+
+def extract_json_from_response(response: str) -> dict:
+    """Extract JSON from LLM response (handles markdown-wrapped JSON)."""
+    # Try to find JSON in markdown code blocks
+    json_match = re.search(r'```json\s*\n(.*?)\n```', response, re.DOTALL)
+    if json_match:
+        json_str = json_match.group(1)
+    else:
+        # Try to find JSON in regular code blocks
+        json_match = re.search(r'```\s*\n(.*?)\n```', response, re.DOTALL)
+        if json_match:
+            json_str = json_match.group(1)
+        else:
+            json_str = response
+    
+    return json.loads(json_str.strip())
 
 
 class SWOTAgentV2(BaseAgent):
@@ -218,7 +236,7 @@ JSON:
                 continue
             
             try:
-                item = json.loads(response)
+                item = extract_json_from_response(response)
                 
                 # Add citation
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
@@ -226,8 +244,8 @@ JSON:
                 item['page'] = chunk.get('page', 0)
                 
                 items.append(item)
-            except:
-                logger.warning(f"Could not parse strength response for {category}")
+            except Exception as e:
+                logger.warning(f"Could not parse strength response for {category}: {e}")
         
         return {"items": items}
     
@@ -305,13 +323,13 @@ JSON:
                 continue
             
             try:
-                item = json.loads(response)
+                item = extract_json_from_response(response)
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
                 item['page'] = chunk.get('page', 0)
                 items.append(item)
-            except:
-                logger.warning(f"Could not parse weakness response for {category}")
+            except Exception as e:
+                logger.warning(f"Could not parse weakness response for {category}: {e}")
         
         return {"items": items}
     
@@ -384,13 +402,13 @@ JSON:
                 continue
             
             try:
-                item = json.loads(response)
+                item = extract_json_from_response(response)
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
                 item['page'] = chunk.get('page', 0)
                 items.append(item)
-            except:
-                logger.warning(f"Could not parse opportunity response for {category}")
+            except Exception as e:
+                logger.warning(f"Could not parse opportunity response for {category}: {e}")
         
         return {"items": items}
     
@@ -463,13 +481,13 @@ JSON:
                 continue
             
             try:
-                item = json.loads(response)
+                item = extract_json_from_response(response)
                 citation_id = create_citation_from_chunk(chunk, context[:200], self.provenance)
                 item['citation_ids'] = [citation_id]
                 item['page'] = chunk.get('page', 0)
                 items.append(item)
-            except:
-                logger.warning(f"Could not parse threat response for {category}")
+            except Exception as e:
+                logger.warning(f"Could not parse threat response for {category}: {e}")
         
         return {"items": items}
     
@@ -549,7 +567,7 @@ JSON:
         response = self.generate_response(prompt).strip()
         
         try:
-            risks = json.loads(response)
+            risks = extract_json_from_response(response)
             added_risks = [r for r in risks if r['status'] == 'NEW']
             heightened_risks = [r for r in risks if r['status'] == 'HEIGHTENED']
             

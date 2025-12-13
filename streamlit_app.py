@@ -374,17 +374,19 @@ def display_summary(doc_id: str, show_citations: bool, show_provenance: bool):
             st.markdown(f"• {change}")
     
     # Financial Highlights
-    if brief['financial_highlights'].get('available'):
+    if brief['financial_highlights'].get('available') and brief['financial_highlights'].get('metrics'):
         st.markdown("### 💰 Financial Highlights")
         
-        cols = st.columns(len(brief['financial_highlights']['metrics']))
-        for i, metric in enumerate(brief['financial_highlights']['metrics']):
-            with cols[i]:
-                display_metric_card(
-                    metric['metric'],
-                    f"{metric['value']:,.0f}",
-                    metric.get('units', '')
-                )
+        metrics = brief['financial_highlights']['metrics']
+        if len(metrics) > 0:
+            cols = st.columns(len(metrics))
+            for i, metric in enumerate(metrics):
+                with cols[i]:
+                    display_metric_card(
+                        metric['metric'],
+                        f"{metric['value']:,.0f}",
+                        metric.get('units', '')
+                    )
     
     # New Risks
     st.markdown("### ⚠️ Key Risk Factors")

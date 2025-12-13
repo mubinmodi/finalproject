@@ -283,14 +283,60 @@ class MetricsAgentV2(BaseAgent):
                     except:
                         continue
         
-        # Try tables (basic keyword matching)
-        # In production, would use more sophisticated table parsing
+        # Try tables - improved parsing for financial statements
         for concept in concepts:
+            # Map XBRL concepts to common table labels
+            label_map = {
+                'revenues': ['total net sales', 'net sales', 'total revenue', 'revenues'],
+                'revenuesfromcontractwithcustomer': ['total net sales', 'net sales', 'total revenue'],
+                'costofrevenue': ['total cost of sales', 'cost of sales', 'cost of revenue'],
+                'grossprofit': ['gross margin', 'gross profit'],
+                'operatingincomeloss': ['operating income', 'income from operations'],
+                'netincomeloss': ['net income', 'net earnings'],
+                'cashandcashequivalents': ['cash and cash equivalents'],
+                'assets': ['total assets'],
+                'liabilities': ['total liabilities'],
+                'stockholdersequity': ['shareholders equity', 'stockholders equity', 'total equity'],
+                'netcashprovidedbyusedinoperatingactivities': ['cash provided by operating', 'net cash from operating', 'operating cash flow'],
+                'paymentstoac quirepropertyplantandequipment': ['capital expenditures', 'capex', 'property and equipment'],
+            }
+            
+            # Get search terms for this concept
+            concept_clean = concept.lower().replace('_', '').replace(' ', '')
+            search_terms = label_map.get(concept_clean, [concept.lower().replace('_', ' ')])
+            
             for table in tables:
-                if 'data' in table:
-                    # Search for concept in table
-                    # This is simplified - real implementation would be more robust
-                    pass
+                if 'data' not in table or not table['data']:
+                    continue
+                
+                # Search table rows
+                for row_idx, row in enumerate(table['data']):
+                    if not row or len(row) < 4:  # Need at least 4 columns
+                        continue
+                    
+                    # Check if first few columns match concept
+                    row_text = ' '.join([str(cell).lower() for cell in row[:3]])
+                    
+                    for term in search_terms:
+                        if term in row_text:
+                            # Financial tables typically have:
+                            # Col 0-2: Labels
+                            # Col 3: Current year (most recent)
+                            # Col 6-9: Prior years
+                            # Try columns 3, 4, 6 in that order
+                            for col_idx in [3, 4, 6, 5, 7]:
+                                if col_idx >= len(row):
+                                    continue
+                                try:
+                                    val_str = str(row[col_idx]).replace(',', '').replace('$', '').replace('(', '-').replace(')', '').strip()
+                                    # Skip empty, headers, and labels
+                                    if val_str and val_str not in ['', '-', 'nan'] and not any(c.isalpha() for c in val_str.replace('-', '')):
+                                        value = float(val_str)
+                                        if abs(value) > 0.01:  # Skip near-zero values
+                                            logger.info(f"Found {concept} = {value} from table row: {row[0][:50]}")
+                                            return (value, "Table")
+                                except ValueError:
+                                    continue
         
         return (None, "Not Found")
     

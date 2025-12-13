@@ -11,7 +11,7 @@ Focus on:
 import json
 from typing import Dict, Any, List, Optional
 from .base_agent import BaseAgent
-from utils import get_logger, ProvenanceTracker, create_citation_from_chunk
+from utils import get_logger, ProvenanceTracker, create_citation_from_chunk, config
 
 logger = get_logger("summary_agent_v2")
 
