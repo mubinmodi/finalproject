@@ -232,7 +232,7 @@ def main():
             st.info("Export functionality coming soon!")
     
     # Main content area
-    tabs = st.tabs(["📋 Overview", "📝 Summary", "🎯 SWOT", "💰 Metrics", "🎲 Decision", "📚 Citations"])
+    tabs = st.tabs(["📋 Overview", "📝 Summary", "🎯 SWOT", "💰 Metrics", "🎲 Decision", "📊 Comparison", "📚 Citations"])
     
     # Tab 1: Overview
     with tabs[0]:
@@ -266,8 +266,12 @@ def main():
         else:
             st.info("Decision analysis not selected")
     
-    # Tab 6: Citations
+    # Tab 6: Comparison
     with tabs[5]:
+        display_comparison(doc_id)
+    
+    # Tab 7: Citations
+    with tabs[6]:
         display_citations(doc_id)
 
 
@@ -720,6 +724,191 @@ def display_citations(doc_id: str):
         use_container_width=True,
         hide_index=True
     )
+
+
+def display_comparison(doc_id: str):
+    """Display multi-year comparison analysis."""
+    st.markdown('<h2 class="sub-header">📊 Multi-Year Comparison</h2>', unsafe_allow_html=True)
+    
+    # Extract ticker from doc_id
+    ticker = doc_id.split('_')[0]
+    
+    # Try to load comparison file
+    comparison_file = Path(f"data/final/comparison_{ticker}.json")
+    
+    if not comparison_file.exists():
+        st.warning("⚠️ No comparison analysis found. Run comparison first:")
+        st.code(f"python run_comparison.py --ticker {ticker}", language="bash")
+        
+        st.info("📝 **How to create multi-year comparison:**")
+        st.markdown("""
+        1. **Download multiple years:**
+           ```bash
+           python download_multi_year.py --ticker AAPL --years 3
+           ```
+        
+        2. **Run comparison analysis:**
+           ```bash
+           python run_comparison.py --ticker AAPL
+           ```
+        
+        3. **Refresh this page to see results**
+        """)
+        return
+    
+    # Load comparison data
+    with open(comparison_file, 'r') as f:
+        comparison = json.load(f)
+    
+    # Display summary
+    st.success(f"✅ Comparing {comparison['num_years']} years of {ticker} filings")
+    
+    # Key insights
+    st.markdown("### 🔍 Key Insights")
+    for insight in comparison['key_insights']:
+        st.markdown(f"- {insight}")
+    
+    st.markdown("---")
+    
+    # Financial trends
+    st.markdown("### 💰 Financial Trends")
+    
+    if comparison['financial_trends']['timeline']:
+        timeline = comparison['financial_trends']['timeline']
+        
+        # Create line charts for financial metrics
+        import plotly.graph_objects as go
+        
+        # Create friendly labels (e.g., "Apple 2025")
+        def format_year_label(doc_id: str) -> str:
+            ticker = doc_id.split('_')[0]
+            # Extract year from accession number (e.g., "0000320193-24-000123" -> "2024")
+            accession = doc_id.split('_')[-1]
+            year_code = accession.split('-')[1]
+            year = f"20{year_code}"
+            return f"{ticker} {year}"
+        
+        x_labels = [format_year_label(t['doc_id']) for t in timeline]
+        
+        # Revenue chart
+        fig_revenue = go.Figure()
+        fig_revenue.add_trace(go.Scatter(
+            x=x_labels,
+            y=[t['revenue'] for t in timeline],
+            mode='lines+markers',
+            name='Revenue',
+            line=dict(color='#2ecc71', width=3),
+            marker=dict(size=10)
+        ))
+        fig_revenue.update_layout(
+            title="Revenue Trend",
+            xaxis_title="",
+            yaxis_title="Revenue ($M)",
+            height=400
+        )
+        st.plotly_chart(fig_revenue, use_container_width=True)
+        
+        # Profitability charts
+        fig_margins = go.Figure()
+        fig_margins.add_trace(go.Scatter(
+            x=x_labels,
+            y=[t['gross_margin'] for t in timeline],
+            mode='lines+markers',
+            name='Gross Margin',
+            line=dict(color='#3498db', width=2),
+            marker=dict(size=8)
+        ))
+        fig_margins.add_trace(go.Scatter(
+            x=x_labels,
+            y=[t['operating_margin'] for t in timeline],
+            mode='lines+markers',
+            name='Operating Margin',
+            line=dict(color='#e74c3c', width=2),
+            marker=dict(size=8)
+        ))
+        fig_margins.add_trace(go.Scatter(
+            x=x_labels,
+            y=[t['net_margin'] for t in timeline],
+            mode='lines+markers',
+            name='Net Margin',
+            line=dict(color='#f39c12', width=2),
+            marker=dict(size=8)
+        ))
+        fig_margins.update_layout(
+            title="Profitability Margins",
+            xaxis_title="",
+            yaxis_title="Margin (%)",
+            height=400
+        )
+        st.plotly_chart(fig_margins, use_container_width=True)
+        
+        # YoY changes
+        if comparison['financial_trends']['yoy_changes']:
+            st.markdown("#### 📈 Year-over-Year Changes")
+            
+            for change in comparison['financial_trends']['yoy_changes']:
+                with st.expander(f"🔄 {change['period']}"):
+                    col1, col2 = st.columns(2)
+                    
+                    with col1:
+                        st.metric(
+                            "Revenue Growth",
+                            f"{change['revenue_growth']:.1f}%",
+                            delta=f"{change['revenue_growth']:.1f}%"
+                        )
+                        st.metric(
+                            "Net Income Growth",
+                            f"{change['net_income_growth']:.1f}%",
+                            delta=f"{change['net_income_growth']:.1f}%"
+                        )
+                    
+                    with col2:
+                        st.metric(
+                            "Gross Margin Change",
+                            f"{change['gross_margin_change']:+.1f}pp",
+                            delta=f"{change['gross_margin_change']:.1f}pp"
+                        )
+                        st.metric(
+                            "Operating Margin Change",
+                            f"{change['operating_margin_change']:+.1f}pp",
+                            delta=f"{change['operating_margin_change']:.1f}pp"
+                        )
+    
+    st.markdown("---")
+    
+    # Risk Factor Changes
+    st.markdown("### 🚨 Risk Factor Evolution")
+    
+    if comparison['risk_changes']['timeline']:
+        st.info(f"**Trend:** {comparison['risk_changes']['summary']}")
+        
+        # Helper function for friendly labels
+        def format_year_label(doc_id: str) -> str:
+            ticker = doc_id.split('_')[0]
+            accession = doc_id.split('_')[-1]
+            year_code = accession.split('-')[1]
+            year = f"20{year_code}"
+            return f"{ticker} {year}"
+        
+        for year_risks in comparison['risk_changes']['timeline']:
+            year_label = format_year_label(year_risks['doc_id'])
+            
+            with st.expander(f"📋 {year_label}"):
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.metric("New Risks", year_risks['new_risks'])
+                    if year_risks['new_risk_items']:
+                        st.markdown("**New Risks:**")
+                        for risk in year_risks['new_risk_items'][:5]:  # Show top 5
+                            st.markdown(f"- {risk[:100]}...")
+                
+                with col2:
+                    st.metric("Heightened Risks", year_risks['heightened_risks'])
+                    if year_risks['heightened_risk_items']:
+                        st.markdown("**Heightened Risks:**")
+                        for risk in year_risks['heightened_risk_items'][:5]:  # Show top 5
+                            st.markdown(f"- {risk[:100]}...")
 
 
 if __name__ == "__main__":
